@@ -1,0 +1,101 @@
+// SOLUTION: Jenkinsfile for Mono-Repo with running stages of changed folder only
+
+def getChangedFolders() {
+    // Step 1: Get all files changed in last commit
+    def files = sh(script: "git diff --name-only HEAD~1 HEAD", returnStdout: true).trim().split('\n')
+    
+    // Step 2: Extract root folder name from each file path
+    def folders = files.collect { it.split('/')[0] }
+    
+    // Step 3: Remove empty values and duplicates
+    return folders.findAll { it.trim() }.unique()
+}
+
+def buildDockerImage(String serviceName) {
+    echo "========== Building Docker image for ${serviceName} =========="
+    def imageTag = "${serviceName}:${env.BUILD_NUMBER}-${env.GIT_COMMIT_SHORT}".toLowerCase()
+    
+    sh "docker build -t ${imageTag} -f /devops/${serviceName}/dockerfile ${serviceName}/"
+    echo "Docker image built: ${imageTag}"
+    env."${serviceName}_IMAGE_TAG" = imageTag
+}
+
+def runDockerContainer(String serviceName) {
+    echo "========== Running Docker container for ${serviceName} =========="
+    def imageTag = env."${serviceName}_IMAGE_TAG"
+    def containerName = "${serviceName}-${env.BUILD_NUMBER}".toLowerCase()
+    
+    // Run container (adjust ports and environment variables as needed)
+    sh """
+        docker run -d --name ${containerName} \
+        -e SERVICE_NAME=${serviceName} \
+        -e BUILD_NUMBER=${env.BUILD_NUMBER} \
+        ${imageTag}
+    """
+    echo "Container started: ${containerName}"
+}
+
+
+pipeline {
+  agent any
+
+  stages {
+    stage('GIT CLONE STAGE') {
+        steps {
+            git branch: 'main', url: 'https://github.com/jehadkalifah/mono-repo-test.git/'
+            sh 'echo List the repository directories'
+            sh 'ls -ltr'
+        }
+    }
+
+    stage('GET GIT COMMIT STAGE') {
+        steps {
+            script {
+                // a short SHA commit with 8 characters
+                env.GIT_COMMIT_SHORT = env.GIT_COMMIT.take(8)
+                echo "Short Commit SHA: ${env.GIT_COMMIT_SHORT}"
+                echo "Full Commit SHA: ${env.GIT_COMMIT}"
+            } //script
+        } //steps
+    } //stage   
+
+    stage('DETECT CHANGES') {
+        steps {
+            script {
+                env.CHANGED_FOLDERS = getChangedFolders().join('\n')
+                echo "Changed folders:\n${env.CHANGED_FOLDERS}"
+            }
+        }
+    }  
+
+    stage('Service Common Build') {
+      when { changeset "common/**" }
+      steps {
+        script {
+          buildDockerImage('common')
+        //   runDockerContainer('common')
+        }
+      }
+    }
+
+    stage('Service 01 Build') {
+      when { changeset "service01/**" }
+      steps {
+        script {
+          buildDockerImage('service01')
+          runDockerContainer('service01')
+        }
+      }
+    }
+
+    stage('Service 02 Build') {
+      when { changeset "service02/**" }
+      steps {
+        script {
+          buildDockerImage('service02')
+          runDockerContainer('service02')
+        }
+      }
+    }
+  }
+}
