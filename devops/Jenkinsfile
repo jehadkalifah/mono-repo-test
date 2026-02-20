@@ -24,10 +24,11 @@ def buildDockerImage(String serviceName) {
 def runDockerContainer(String serviceName) {
     echo "========== Running Docker container for ${serviceName} =========="
     def imageTag = env."${serviceName}_IMAGE_TAG"
-    def containerName = "${serviceName}-${env.BUILD_NUMBER}".toLowerCase()
+    def containerName = "${jobName}-${serviceName}".toLowerCase()
     
     // Run container (adjust ports and environment variables as needed)
     sh """
+        echo "Running container ${containerName} with image ${imageTag}"
         docker run -d --name ${containerName} \
         -e SERVICE_NAME=${serviceName} \
         -e BUILD_NUMBER=${env.BUILD_NUMBER} \
@@ -74,7 +75,7 @@ pipeline {
       steps {
         script {
           buildDockerImage('common')
-        //   runDockerContainer('common')
+          runDockerContainer('common')
         }
       }
     }
