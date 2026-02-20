@@ -24,6 +24,7 @@ def buildDockerImage(String serviceName) {
 def runDockerContainer(String serviceName) {
     echo "========== Running Docker container for ${serviceName} =========="
     def imageTag = env."${serviceName}_IMAGE_TAG"
+    def jobName = "${JOB_NAME}".split('/')[0]
     def containerName = "${jobName}-${serviceName}".toLowerCase()
     
     // Run container (adjust ports and environment variables as needed)
