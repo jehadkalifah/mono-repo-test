@@ -13,7 +13,8 @@ def getChangedFolders() {
 
 def buildDockerImage(String serviceName) {
     echo "========== Building Docker image for ${serviceName} =========="
-    def imageTag = "${JOB_NAME}:${serviceName}.${env.BUILD_NUMBER}.${env.GIT_COMMIT_SHORT}".toLowerCase()
+    def jobName = "${JOB_NAME}".split('/')[0]
+    def imageTag = "${jobName}:${serviceName}.${env.BUILD_NUMBER}.${env.GIT_COMMIT_SHORT}".toLowerCase()
     
     sh "docker build -t ${imageTag} -f /devops/${serviceName}/dockerfile ${serviceName}/"
     echo "Docker image built: ${imageTag}"
