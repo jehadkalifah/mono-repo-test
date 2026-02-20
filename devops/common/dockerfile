@@ -1,0 +1,8 @@
+# Use an official Alpine Linux as the base image
+FROM alpine:latest
+
+# Install a simple package (e.g., curl) for demonstration
+RUN apk add --no-cache curl
+
+# Keep the container running indefinitely
+CMD ["tail", "-f", "/dev/null"]
