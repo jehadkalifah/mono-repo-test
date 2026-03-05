@@ -9,14 +9,14 @@ pipeline {
             sh 'ls -ltr'
         }
     }
-    
+
     stage('Root Change Check') {
       when { changeset "**" }
       steps {
         sh 'echo "Root changes detected..."'
       }
     }
-    
+
     stage('Service Common Build') {
       when { changeset "common/**" }
       steps {
@@ -29,7 +29,7 @@ pipeline {
     }
 
     stage('Service 01 Build') {
-      when { changeset "service01/**" }
+      when { changeset "apps/service01/**" }
       steps {
         dir('service01') {
           sh 'echo "Building Service01..."'
@@ -38,9 +38,9 @@ pipeline {
     }
 
     stage('Service 02 Build') {
-      when { changeset "service02/**" }
+      when { changeset "apps/service02/**" }
       steps {
-        dir('service02') {
+        dir('apps/service02') {
           sh 'echo "Building Service02..."'
         }
       }
