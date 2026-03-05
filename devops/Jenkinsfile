@@ -1,48 +1,52 @@
-pipeline {
-  agent any
+// This is a Jenkins Declarative Pipeline script for building a mono-repo with multiple services.
+// It dynamically creates build stages for each subdirectory under the 'apps' folder.
+// The pipeline clones the repository, checks for changes, and builds only the services that have been modified.
 
-  stages {
-    stage('GIT CLONE STAGE') {
-        steps {
-            git branch: 'main', url: 'https://github.com/jehadkalifah/mono-repo-test.git/'
-            sh 'echo List the repository directories'
-            sh 'ls -ltr apps || true'
+pipeline {  // Defines the start of the Jenkins pipeline block, which is the root of the declarative pipeline syntax.
+  agent any  // Specifies that this pipeline can run on any available Jenkins agent (node). 'any' means no specific agent is required.
+
+  stages {  // Begins the 'stages' block, which contains all the sequential stages of the pipeline.
+    stage('GIT CLONE STAGE') {  // Defines a stage named 'GIT CLONE STAGE' for cloning the repository.
+        steps {  // The 'steps' block contains the actions to perform in this stage.
+            git branch: 'main', url: 'https://github.com/jehadkalifah/mono-repo-test.git/'  // Clones the specified Git repository, checking out the 'main' branch. This pulls the latest code from the remote repository.
+            sh 'echo List the repository directories'  // Executes a shell command to print a message indicating that the repository directories will be listed.
+            sh 'ls -ltr apps || true'  // Lists the contents of the 'apps' directory in long format, sorted by modification time. The '|| true' ensures the command doesn't fail if 'apps' doesn't exist, allowing the pipeline to continue.
         }
     }
 
-    stage('Build all services') {
-        steps {
-            script {
+    stage('Build all services') {  // Defines a stage named 'Build all services' that will dynamically build each service found in the 'apps' directory.
+        steps {  // The 'steps' block for this stage.
+            script {  // Enters a 'script' block, allowing the use of Groovy scripting within the declarative pipeline. This is necessary for dynamic stage creation and complex logic.
                 // obtain a list of sub‑directories under apps/
-                def services = sh(script: "ls -1 apps 2>/dev/null || true", returnStdout: true)
-                                     .trim()
-                                     .split("\\r?\\n")
-                                     .findAll { it }   // drop empty lines
+                def services = sh(script: "ls -1 apps 2>/dev/null || true", returnStdout: true)  // Executes a shell command to list the subdirectories in 'apps' one per line. '2>/dev/null' suppresses error output, '|| true' prevents failure if 'apps' is missing. 'returnStdout: true' captures the output as a string.
+                                     .trim()  // Removes leading and trailing whitespace from the output string.
+                                     .split("\\r?\\n")  // Splits the string into a list of lines, handling both Unix (\n) and Windows (\r\n) line endings.
+                                     .findAll { it }   // Filters out any empty strings from the list, ensuring only non-empty directory names remain.
 
-                services.each { svc ->
-                    def svcPath = "apps/${svc}"
+                services.each { svc ->  // Iterates over each service directory name in the 'services' list. 'svc' is the variable holding the current service name.
+                    def svcPath = "apps/${svc}"  // Constructs the full path to the service directory by concatenating 'apps/' with the service name.
 
                     // optional: only run if something under that folder changed
-                    def changed = sh(
-                        script: "git diff --name-only HEAD~1 | grep -q '^${svcPath}/' && echo yes || echo no",
-                        returnStdout: true
-                    ).trim() == 'yes'
+                    def changed = sh(  // Executes a shell command to check if any files under the service path have changed since the last commit.
+                        script: "git diff --name-only HEAD~1 | grep -q '^${svcPath}/' && echo yes || echo no",  // Compares the current HEAD with the previous commit (HEAD~1), lists changed files, and checks if any start with the service path. Outputs 'yes' if changes are found, 'no' otherwise.
+                        returnStdout: true  // Captures the output of the command as a string.
+                    ).trim() == 'yes'  // Trims whitespace and checks if the output equals 'yes', setting 'changed' to true if the service has changes.
 
-                    if (!changed) {
-                        echo "no changes in ${svcPath}, skipping"
-                        return
+                    if (!changed) {  // If no changes were detected in the service directory, skip building it.
+                        echo "no changes in ${svcPath}, skipping"  // Prints a message to the console indicating that the service is being skipped due to no changes.
+                        return  // Exits the current iteration of the loop, moving to the next service.
                     }
 
                     // create a real stage for every service
-                    stage("Build ${svc}") {
+                    stage("Build ${svc}") {  // Dynamically creates a new stage for each service, named 'Build <service_name>'. This stage will appear in the Jenkins UI.
                         // calculate the commit id from the repository root so the path resolves correctly
-                        def commitId = sh(script: "git log -n1 --format=%h -- ${svcPath}", returnStdout: true).trim()
-                        dir(svcPath) {
-                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                sh "echo Building ${svc} at commit ${commitId}…"
+                        def commitId = sh(script: "git log -n1 --format=%h -- ${svcPath}", returnStdout: true).trim()  // Retrieves the short commit hash of the last commit that affected files in the service path. '--format=%h' specifies short hash format, and the path limits the log to changes in that directory.
+                        dir(svcPath) {  // Changes the working directory to the service's path for the subsequent steps.
+                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {  // Wraps the steps in error handling. If any step fails, marks the overall build as 'FAILURE' and the stage as 'FAILURE', but continues executing the pipeline.
+                                sh "echo Building ${svc} at commit ${commitId}…"  // Prints a message indicating the start of building the service, including the commit ID.
 
                                 // ensure script is executable then run it if exists
-                                sh 'if [ -f script.sh ]; then chmod +x script.sh && ./script.sh; fi'
+                                sh 'if [ -f script.sh ]; then chmod +x script.sh && ./script.sh; fi'  // Checks if 'script.sh' exists in the service directory. If it does, makes it executable with 'chmod +x' and then runs it. This allows each service to have its own build script.
                             }
                         }
                     }
