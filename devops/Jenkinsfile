@@ -6,54 +6,45 @@ pipeline {
         steps {
             git branch: 'main', url: 'https://github.com/jehadkalifah/mono-repo-test.git/'
             sh 'echo List the repository directories'
-            sh 'ls -ltr'
+            sh 'ls -ltr apps || true'
         }
     }
 
-    stage('Root Change Check') {
-      when { changeset "**" }
-      steps {
-        sh 'echo "Root changes detected..."'
-      }
-    }
+    stage('Build all services') {
+        steps {
+            script {
+                // obtain a list of sub‑directories under apps/
+                def services = sh(script: "ls -1 apps 2>/dev/null || true", returnStdout: true)
+                                     .trim()
+                                     .split("\\r?\\n")
+                                     .findAll { it }   // drop empty lines
 
-    stage('Service Common Build') {
-      when { changeset "common/**" }
-      steps {
-        // to change the working directory to the common directory 
-        // before executing the commands within it
-        dir('common') {
-          // With buildResult: 'FAILURE' the overall run becomes FAILURE if the inner shell command 
-          // fails; the stageResult becomes FAILURE so you see the failure in the UI
-          catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            exit 1
-            sh 'echo "Building common..."'
-          }  
-        }
-      }
-    }
+                services.each { svc ->
+                    def svcPath = "apps/${svc}"
 
-    stage('Service 01 Build') {
-      when { changeset "apps/service01/**" }
-      steps {
-        dir('service01') {
-          catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            exit 1
-            sh 'echo "Building Service01..."'
-          }
-        }
-      }
-    }
+                    // optional: only run if something under that folder changed
+                    def changed = sh(
+                        script: "git diff --name-only HEAD~1 | grep -q '^${svcPath}/' && echo yes || echo no",
+                        returnStdout: true
+                    ).trim() == 'yes'
 
-    stage('Service 02 Build') {
-      when { changeset "apps/service02/**" }
-      steps {
-        dir('apps/service02') {
-          catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            sh 'echo "Building Service02..."'
-          }
+                    if (!changed) {
+                        echo "no changes in ${svcPath}, skipping"
+                        return
+                    }
+
+                    // create a real stage for every service
+                    stage("Build ${svc}") {
+                        dir(svcPath) {
+                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                sh "echo Building ${svc}…"
+                                // your actual build commands go here
+                            }
+                        }
+                    }
+                }
+            }
         }
-      }
     }
   }
 }
