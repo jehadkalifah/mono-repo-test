@@ -38,6 +38,7 @@ pipeline {
       steps {
         dir('service01') {
           catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+            exit 1
             sh 'echo "Building Service01..."'
           }
         }
