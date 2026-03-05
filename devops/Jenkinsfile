@@ -35,10 +35,10 @@ pipeline {
 
                     // create a real stage for every service
                     stage("Build ${svc}") {
+                        // calculate the commit id from the repository root so the path resolves correctly
+                        def commitId = sh(script: "git log -n1 --format=%h -- ${svcPath}", returnStdout: true).trim()
                         dir(svcPath) {
                             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                // determine latest commit touching this folder and show it
-                                def commitId = sh(script: "git log -n1 --format=%h -- ${svcPath}", returnStdout: true).trim()
                                 sh "echo Building ${svc} at commit ${commitId}…"
 
                                 // ensure script is executable then run it if exists
