@@ -26,7 +26,7 @@ pipeline {
           // With buildResult: 'FAILURE' the overall run becomes FAILURE if the inner shell command 
           // fails; the stageResult becomes FAILURE so you see the failure in the UI
           catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-            exit 
+            exit 1
             sh 'echo "Building common..."'
           }  
         }
