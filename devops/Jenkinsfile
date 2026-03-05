@@ -23,7 +23,11 @@ pipeline {
         // to change the working directory to the common directory 
         // before executing the commands within it
         dir('common') {
-          sh 'echo "Building common..."'
+          // With buildResult: 'SUCCESS' the overall run stays SUCCESS even if the inner shell command 
+          // fails; the stageResult becomes UNSTABLE so you still see the failure in the UI
+          catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            sh 'echo "Building common..."'
+          }  
         }
       }
     }
@@ -32,8 +36,9 @@ pipeline {
       when { changeset "apps/service01/**" }
       steps {
         dir('service01') {
-          exit 1
-          sh 'echo "Building Service01..."'
+          catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            sh 'echo "Building Service01..."'
+          }
         }
       }
     }
@@ -42,7 +47,9 @@ pipeline {
       when { changeset "apps/service02/**" }
       steps {
         dir('apps/service02') {
-          sh 'echo "Building Service02..."'
+          catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            sh 'echo "Building Service02..."'
+          }
         }
       }
     }
