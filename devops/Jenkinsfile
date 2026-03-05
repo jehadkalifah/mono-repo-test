@@ -38,7 +38,8 @@ pipeline {
                         dir(svcPath) {
                             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                                 sh "echo Building ${svc}…"
-                                // your actual build commands go here
+                                // run the service-specific script if present
+                                sh './script.sh'
                             }
                         }
                     }
