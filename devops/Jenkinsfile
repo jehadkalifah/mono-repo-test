@@ -26,6 +26,7 @@ pipeline {
           // With buildResult: 'SUCCESS' the overall run stays SUCCESS even if the inner shell command 
           // fails; the stageResult becomes UNSTABLE so you still see the failure in the UI
           catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            exit 1
             sh 'echo "Building common..."'
           }  
         }
