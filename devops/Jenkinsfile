@@ -32,6 +32,7 @@ pipeline {
       when { changeset "apps/service01/**" }
       steps {
         dir('service01') {
+          exit 1
           sh 'echo "Building Service01..."'
         }
       }
