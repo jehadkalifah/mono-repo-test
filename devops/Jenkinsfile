@@ -37,6 +37,7 @@ pipeline {
       steps {
         dir('service01') {
           catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+            exist 1
             sh 'echo "Building Service01..."'
           }
         }
