@@ -51,15 +51,14 @@ pipeline {
                             def commitId = sh(script: "git log -n1 --format=%H -- ${svcPath} | cut -c1-8", returnStdout: true).trim()
                             def stageResult = 'SUCCESS'  // Default to success
                             dir(svcPath) {
-                                try {
+                                catchError(stageResult: 'FAILURE') { 
                                     sh "echo Building ${svc} at commit ${commitId}…"  
                                     sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"  
                                     stageResult = 'SUCCESS'
-                                } catch (Exception e) {
+                                } //catchError
+                                if (currentBuild.result == 'FAILURE') {
                                     stageResult = 'FAILURE'
-                                    currentBuild.result = 'FAILURE'
-                                    error "Build failed for ${svc}: ${e.message}"
-                                } //catch
+                                }
                                 echo "stageResult: ${stageResult}"
                             } //dir
                         } //stage
