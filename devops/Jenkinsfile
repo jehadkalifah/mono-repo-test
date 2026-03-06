@@ -42,7 +42,6 @@ pipeline {
                         def changed = changedFiles.length() > 0
 
                         if (!changed) {  
-                            echo "no changes in ${svcPath}, skipping" 
                             return 
                         } //if
 
