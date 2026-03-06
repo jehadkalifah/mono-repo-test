@@ -58,6 +58,7 @@ pipeline {
                                 } catch (Exception e) {
                                     stageResult = 'FAILURE'
                                     currentBuild.result = 'FAILURE'
+                                    error "Build failed for ${svc}: ${e.message}"
                                 } //catch
                                 echo "stageResult: ${stageResult}"
                             } //dir
