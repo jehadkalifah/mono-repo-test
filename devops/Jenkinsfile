@@ -21,8 +21,8 @@ pipeline {
         stage('BUILDING STAGES FOR ALL SERVICES') {
             steps {
                 script {
-                    // obtain a list of sub‑directories under apps/ (ignore any Jenkins @tmp entries)
-                    def services = sh(script: "ls -1 ${ROOT_GIT_APPS_DIR} 2>/dev/null | grep -v \'@tmp\$\' || true", returnStdout: true)
+                    // obtain a list of changed sub-directories under apps/ (ignore any Jenkins @tmp entries)
+                    def services = sh(script: "git diff --name-only HEAD~1 HEAD -- ${ROOT_GIT_APPS_DIR} 2>/dev/null | cut -d'/' -f2 | sort -u | grep -v '^$' || true", returnStdout: true)
                                         .trim()
                                         .split("\\r?\\n") 
                                         .findAll { it }
@@ -35,44 +35,43 @@ pipeline {
                         // only run if something under that folder changed
                         // compare current commit against previous; handle edge cases gracefully
                         def changedFiles = sh(
-                            script: "git diff --name-only HEAD~1 HEAD -- ${svcPath} 2>/dev/null || git diff --name-only HEAD -- ${svcPath} 2>/dev/null | head -1",
+                            script: "git diff --name-only HEAD~1 HEAD -- ${svcPath} 2>/dev/null | head -1",
                             returnStdout: true
                         ).trim()
 
                         def changed = changedFiles.length() > 0
-                        
-                        if (!changed) {
-                            return
-                        }
 
-                        if (changed) {
-                            // create a real stage for every service
-                            stage("BUILDING ${svc.toUpperCase()} STAGE") {
-                                def commitId = sh(script: "git log -n1 --format=%H -- ${svcPath} | cut -c1-8", returnStdout: true).trim()
-                                def stageResult = 'SUCCESS'
-                                def buildException = null
-                                
-                                dir(svcPath) {
-                                    try {
-                                        sh "echo Building ${svc} at commit ${commitId}…"  
-                                        sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"
-                                    } catch (Exception e) {
-                                        stageResult = 'FAILURE'
-                                        buildException = e
-                                    }
-                                }
-                                
-                                // Mark stage as failed in UI and set global result if exception occurred
-                                if (buildException != null) {
-                                    currentBuild.result = 'FAILURE'
-                                    catchError(stageResult: 'FAILURE') {
-                                        throw buildException
-                                    }
-                                }
-                                
-                                echo "stageResult: ${stageResult}"
-                            } //stage
+                        if (!changed) {  
+                            echo "no changes in ${svcPath}, skipping" 
+                            return 
                         } //if
+
+                        // create a real stage for every service
+                        stage("BUILDING ${svc.toUpperCase()} STAGE") {
+                            def commitId = sh(script: "git log -n1 --format=%H -- ${svcPath} | cut -c1-8", returnStdout: true).trim()
+                            def stageResult = 'SUCCESS'
+                            def buildException = null
+                            
+                            dir(svcPath) {
+                                try {
+                                    sh "echo Building ${svc} at commit ${commitId}…"  
+                                    sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"
+                                } catch (Exception e) {
+                                    stageResult = 'FAILURE'
+                                    buildException = e
+                                }
+                            }
+                            
+                            // Mark stage as failed in UI and set global result if exception occurred
+                            if (buildException != null) {
+                                currentBuild.result = 'FAILURE'
+                                catchError(stageResult: 'FAILURE') {
+                                    throw buildException
+                                }
+                            }
+                            
+                            echo "stageResult: ${stageResult}"
+                        } //stage
                     } //services.each
                 } //script   
             } //steps
