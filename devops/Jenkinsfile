@@ -54,7 +54,7 @@ pipeline {
                                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') { 
                                     sh "echo Building ${svc} at commit ${commitId}…"  
                                     sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"  
-                                    currentBuild.result = 'SUCCESS'  // Explicitly set to SUCCESS
+                                    // currentBuild.result = 'SUCCESS'  // Explicitly set to SUCCESS
                                     // If we reach here without exception, mark as success
                                 } //catchError
                                 echo "currentBuild.result: ${currentBuild.result}"
