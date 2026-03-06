@@ -35,11 +35,15 @@ pipeline {
                         // only run if something under that folder changed
                         // compare current commit against previous; handle edge cases gracefully
                         def changedFiles = sh(
-                            script: "git diff --name-only HEAD~1 HEAD -- ${svcPath} 2>/dev/null | head -1",
+                            script: "git diff --name-only HEAD~1 HEAD -- ${svcPath} 2>/dev/null || git diff --name-only HEAD -- ${svcPath} 2>/dev/null | head -1",
                             returnStdout: true
                         ).trim()
 
                         def changed = changedFiles.length() > 0
+                        
+                        if (!changed) {
+                            return
+                        }
 
                         if (changed) {
                             // create a real stage for every service
