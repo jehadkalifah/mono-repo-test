@@ -41,36 +41,34 @@ pipeline {
 
                         def changed = changedFiles.length() > 0
 
-                        if (!changed) {  
-                            return 
+                        if (changed) {
+                            // create a real stage for every service
+                            stage("BUILDING ${svc.toUpperCase()} STAGE") {
+                                def commitId = sh(script: "git log -n1 --format=%H -- ${svcPath} | cut -c1-8", returnStdout: true).trim()
+                                def stageResult = 'SUCCESS'
+                                def buildException = null
+                                
+                                dir(svcPath) {
+                                    try {
+                                        sh "echo Building ${svc} at commit ${commitId}…"  
+                                        sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"
+                                    } catch (Exception e) {
+                                        stageResult = 'FAILURE'
+                                        buildException = e
+                                    }
+                                }
+                                
+                                // Mark stage as failed in UI and set global result if exception occurred
+                                if (buildException != null) {
+                                    currentBuild.result = 'FAILURE'
+                                    catchError(stageResult: 'FAILURE') {
+                                        throw buildException
+                                    }
+                                }
+                                
+                                echo "stageResult: ${stageResult}"
+                            } //stage
                         } //if
-
-                        // create a real stage for every service
-                        stage("BUILDING ${svc.toUpperCase()} STAGE") {
-                            def commitId = sh(script: "git log -n1 --format=%H -- ${svcPath} | cut -c1-8", returnStdout: true).trim()
-                            def stageResult = 'SUCCESS'
-                            def buildException = null
-                            
-                            dir(svcPath) {
-                                try {
-                                    sh "echo Building ${svc} at commit ${commitId}…"  
-                                    sh "if [ -f ${GENERAL_SCRIPT_FILE} ]; then chmod +x ${GENERAL_SCRIPT_FILE} && ./${GENERAL_SCRIPT_FILE} ${svc} ${BRANCH_NAME} ${ROOT_LOCAL_APPS_DIR} ${WORKSPACE}; fi"
-                                } catch (Exception e) {
-                                    stageResult = 'FAILURE'
-                                    buildException = e
-                                }
-                            }
-                            
-                            // Mark stage as failed in UI and set global result if exception occurred
-                            if (buildException != null) {
-                                currentBuild.result = 'FAILURE'
-                                catchError(stageResult: 'FAILURE') {
-                                    throw buildException
-                                }
-                            }
-                            
-                            echo "stageResult: ${stageResult}"
-                        } //stage
                     } //services.each
                 } //script   
             } //steps
