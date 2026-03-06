@@ -22,7 +22,7 @@ pipeline {
             steps {
                 script {
                     // obtain a list of changed sub-directories under apps/ (ignore any Jenkins @tmp entries)
-                    def services = sh(script: "git diff --name-only HEAD~1 HEAD -- ${ROOT_GIT_APPS_DIR} 2>/dev/null | cut -d'/' -f2 | sort -u | grep -v '^$' || true", returnStdout: true)
+                    def services = sh(script: 'git diff --name-only HEAD~1 HEAD -- ' + ROOT_GIT_APPS_DIR + ' 2>/dev/null | cut -d"/" -f2 | sort -u | grep -v "^$" || true', returnStdout: true)
                                         .trim()
                                         .split("\\r?\\n") 
                                         .findAll { it }
